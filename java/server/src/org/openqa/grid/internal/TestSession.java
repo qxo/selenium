@@ -20,30 +20,6 @@ package org.openqa.grid.internal;
 import static org.openqa.selenium.remote.http.HttpMethod.DELETE;
 import static org.openqa.selenium.remote.http.HttpMethod.POST;
 
-import com.google.common.io.ByteStreams;
-import com.google.common.net.MediaType;
-
-import org.openqa.grid.common.SeleniumProtocol;
-import org.openqa.grid.common.exception.ClientGoneException;
-import org.openqa.grid.common.exception.GridException;
-import org.openqa.grid.internal.listeners.CommandListener;
-import org.openqa.grid.web.Hub;
-import org.openqa.grid.web.servlet.handler.LegacySeleniumRequest;
-import org.openqa.grid.web.servlet.handler.RequestType;
-import org.openqa.grid.web.servlet.handler.SeleniumBasedRequest;
-import org.openqa.grid.web.servlet.handler.SeleniumBasedResponse;
-import org.openqa.grid.web.servlet.handler.WebDriverRequest;
-import org.openqa.selenium.json.Json;
-import org.openqa.selenium.json.JsonException;
-import org.openqa.selenium.remote.ErrorCodes;
-import org.openqa.selenium.remote.http.HttpClient;
-import org.openqa.selenium.remote.http.HttpMethod;
-import org.openqa.selenium.remote.http.HttpRequest;
-import org.openqa.selenium.remote.http.HttpResponse;
-import org.openqa.selenium.remote.internal.ApacheHttpClient;
-import org.openqa.selenium.remote.server.jmx.ManagedAttribute;
-import org.openqa.selenium.remote.server.jmx.ManagedService;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -68,6 +44,32 @@ import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
+import org.openqa.grid.common.SeleniumProtocol;
+import org.openqa.grid.common.exception.ClientGoneException;
+import org.openqa.grid.common.exception.GridException;
+import org.openqa.grid.internal.listeners.CommandListener;
+import org.openqa.grid.web.Hub;
+import org.openqa.grid.web.servlet.handler.LegacySeleniumRequest;
+import org.openqa.grid.web.servlet.handler.RequestType;
+import org.openqa.grid.web.servlet.handler.SeleniumBasedRequest;
+import org.openqa.grid.web.servlet.handler.SeleniumBasedResponse;
+import org.openqa.grid.web.servlet.handler.WebDriverRequest;
+import org.openqa.selenium.json.Json;
+import org.openqa.selenium.json.JsonException;
+import org.openqa.selenium.remote.ErrorCodes;
+import org.openqa.selenium.remote.http.HttpClient;
+import org.openqa.selenium.remote.http.HttpMethod;
+import org.openqa.selenium.remote.http.HttpRequest;
+import org.openqa.selenium.remote.http.HttpResponse;
+import org.openqa.selenium.remote.internal.ApacheHttpClient;
+import org.openqa.selenium.remote.server.jmx.ManagedAttribute;
+import org.openqa.selenium.remote.server.jmx.ManagedService;
+
+import com.google.common.collect.Maps;
+import com.google.common.io.ByteStreams;
+import com.google.common.net.MediaType;
+import com.google.gson.Gson;
 
 /**
  * Represent a running test for the hub/registry. A test session is created when a TestSlot becomes
@@ -459,7 +461,20 @@ public class TestSession {
 
     if (body != null) {
       proxyRequest = new HttpRequest(HttpMethod.valueOf(request.getMethod()), uri);
-      proxyRequest.setContent(ByteStreams.toByteArray(body));
+     
+        final WebDriverRequest wdRequest = request instanceof WebDriverRequest 
+	      ? (WebDriverRequest) request : null ;
+        if(wdRequest != null && wdRequest.getDesiredCapabilities() != null){
+		  // new Session should pass matched capabilities ( respect nodeConfig,not just client capabilities )
+		  final Map<String, Object> capabilities = slot.getCapabilities();
+		  final Map<String, Object>  jsonMap = Maps.newHashMap();
+		  jsonMap.put("desiredCapabilities", capabilities);
+		  jsonMap.put("capabilities", capabilities);
+		  final Gson gson = new Gson();
+		  proxyRequest.setContent( gson.toJson(jsonMap).getBytes("UTF-8") );
+        }else{
+		  proxyRequest.setContent(ByteStreams.toByteArray(body));
+        }
     } else {
       proxyRequest = new HttpRequest(HttpMethod.valueOf(request.getMethod()), uri);
     }

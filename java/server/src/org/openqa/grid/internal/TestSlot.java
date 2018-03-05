@@ -135,6 +135,7 @@ public class TestSlot {
         log.info("Trying to create a new session on test slot " + this.capabilities);
         desiredCapabilities.put(GridNodeConfiguration.CONFIG_UUID_CAPABILITY,
                                 capabilities.get(GridNodeConfiguration.CONFIG_UUID_CAPABILITY));
+        desiredCapabilities.putAll(capabilities);
         TestSession session = new TestSession(this, desiredCapabilities, Clock.systemUTC());
         currentSession = session;
         lastSessionStart = System.currentTimeMillis();
