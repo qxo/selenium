@@ -22,6 +22,8 @@ import static org.openqa.selenium.remote.http.HttpMethod.POST;
 
 import com.google.common.io.ByteStreams;
 import com.google.common.net.MediaType;
+import com.google.common.collect.Maps;
+import com.google.gson.Gson;
 
 import org.openqa.grid.common.SeleniumProtocol;
 import org.openqa.grid.common.exception.ClientGoneException;
@@ -459,7 +461,20 @@ public class TestSession {
 
     if (body != null) {
       proxyRequest = new HttpRequest(HttpMethod.valueOf(request.getMethod()), uri);
-      proxyRequest.setContent(ByteStreams.toByteArray(body));
+     
+        final WebDriverRequest wdRequest = request instanceof WebDriverRequest 
+	      ? (WebDriverRequest) request : null ;
+        if(wdRequest != null && wdRequest.getDesiredCapabilities() != null){
+		  // new Session should pass matched capabilities ( respect nodeConfig,not just client capabilities )
+		  final Map<String, Object> capabilities = slot.getCapabilities();
+		  final Map<String, Object>  jsonMap = Maps.newHashMap();
+		  jsonMap.put("desiredCapabilities", capabilities);
+		  jsonMap.put("capabilities", capabilities);
+		  final Gson gson = new Gson();
+		  proxyRequest.setContent( gson.toJson(jsonMap).getBytes("UTF-8") );
+        }else{
+		  proxyRequest.setContent(ByteStreams.toByteArray(body));
+        }
     } else {
       proxyRequest = new HttpRequest(HttpMethod.valueOf(request.getMethod()), uri);
     }
